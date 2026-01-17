@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyb3rint3l Labs // Windows Server Security Audit - ##FQDN##</title>
+    <style>
+        :root { --bg-dark: #0f172a; --bg-card: #1e293b; --text-main: #f8fafc; --text-muted: #94a3b8; --accent: #27BFD9; --danger: #ef4444; --warning: #f59e0b; --success: #10b981; --info: #3b82f6; --na: #64748b; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family:'Segoe UI', Inter, system-ui, sans-serif; background-color: var(--bg-dark); color: var(--text-main); padding: 2rem; line-height: 1.5; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem; border-bottom: 2px solid var(--accent); padding-bottom: 1rem; }
+        
+        /* BRANDING & LOGO */
+        .brand { display: flex; align-items: center; gap: 15px; }
+        .logo { 
+            width: 60px; 
+            height: 60px; 
+            border-radius: 50%; 
+            border: 2px solid #85578C;                  
+            object-fit: cover;
+        }
+        
+        .brand-text { display: flex; flex-direction: column; justify-content: center; }
+        .brand h1 { font-size: 1.5rem; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; margin: 0; line-height: 1.1; }
+        .tagline { color: var(--text-muted); font-size: 0.75rem; letter-spacing: 2px; font-weight: 600; text-transform: uppercase; margin-top: 4px; }
+
+        .meta { text-align: right; color: var(--text-muted); font-size: 0.85rem; line-height: 1.4; }
+        .meta strong { color: #fff; font-weight: 700; }
+        
+        /* DASHBOARD GRID */
+        .dashboard { display: grid; grid-template-columns: 320px 1fr; gap: 2rem; margin-bottom: 3rem; }
+        .card { background-color: var(--bg-card); border-radius: 12px; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.5); display: flex; flex-direction: column; }
+        
+        /* SCORE CARD STYLES */
+        .score-card { align-items: center; justify-content: flex-start; text-align: center; } 
+        .gauge-container { position: relative; width: 150px; height: 150px; margin-bottom: 0.5rem; margin-top: 1rem; }
+        .gauge-bg { fill: none; stroke: #334155; stroke-width: 10; }
+        .gauge-progress { fill: none; stroke: ##GRADE_COLOR##; stroke-width: 10; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 50% 50%; stroke-dasharray: 440; stroke-dashoffset: 440; transition: stroke-dashoffset 1s ease-out; }
+        .grade-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 3rem; font-weight: 800; color: ##GRADE_COLOR##; }
+        
+        .exec-summary { margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.1); font-size: 0.9rem; color: var(--text-muted); line-height: 1.6; text-align: center; width: 100%; }
+        .exec-summary strong { color: #f1f5f9; font-weight: 600; }
+
+        /* COMPLIANCE BARS STYLES */
+        .cat-compliance { margin-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1.5rem; width: 100%; }
+        .cat-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.8rem; font-size: 0.85rem; }
+        .cat-name { width: 35%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text-muted); }
+        .progress-track { flex-grow: 1; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; margin: 0 15px; overflow: hidden; }
+        .progress-fill { height: 100%; border-radius: 4px; transition: width 1s ease-out; }
+        .cat-percent { width: 45px; text-align: right; font-weight: 700; color: var(--text-main); font-family: monospace; }
+
+        /* STATS GRID */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 1rem; width: 100%; }
+        .stat-box { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 1rem; border-left: 4px solid transparent; cursor: pointer; transition: transform 0.1s, background 0.2s; }
+        .stat-box:hover { background: rgba(255,255,255,0.06); }
+        .stat-box:active { transform: scale(0.98); }
+        .stat-box.crit { border-color: var(--danger); } .stat-box.warn { border-color: var(--warning); } .stat-box.ok { border-color: var(--success); } .stat-box.neutral { border-color: var(--na); }
+        .stat-value { font-size: 2rem; font-weight: 700; } .stat-label { color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; }
+        
+        /* TABLES & FINDINGS */
+        .category-block { margin-bottom: 2rem; }
+        .category-header { background: linear-gradient(90deg, #334155 0%, transparent 100%); padding: 0.75rem 1rem; border-radius: 6px; margin-bottom: 1rem; border-left: 4px solid var(--accent); cursor: pointer; user-select: none; position: relative; transition: background-color 0.2s; }
+        .category-header:hover { background: linear-gradient(90deg, #475569 0%, transparent 100%); }
+        .category-header::after { content: '\25BC'; position: absolute; right: 20px; top: 50%; transform: translateY(-50%); transition: transform 0.3s; font-size: 0.8rem; color: var(--accent); }
+        .category-header.active::after { transform: translateY(-50%) rotate(180deg); }
+        .category-header h3 { font-size: 1.1rem; margin-bottom: 0.2rem; }
+        
+        .category-body { display: none; animation: fadeIn 0.3s ease-in-out; }
+        .category-body.open { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .nis2-ref { font-size: 0.85rem; color: #cbd5e1; line-height: 1.4; margin-top:5px; }
+        .check-table { width: 100%; border-collapse: separate; border-spacing: 0 0.5rem; }
+        .check-row { background-color: var(--bg-card); transition: transform 0.2s; } 
+        .check-row td { padding: 1rem; border-top: 1px solid #334155; border-bottom: 1px solid #334155; }
+        .check-row td:first-child { border-left: 1px solid #334155; border-top-left-radius: 8px; border-bottom-left-radius: 8px; }
+        .check-row td:last-child { border-right: 1px solid #334155; border-top-right-radius: 8px; border-bottom-right-radius: 8px; }
+        
+        .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; display: inline-block; min-width: 80px; text-align: center; }
+        .st-ok { background: rgba(16, 185, 129, 0.2); color: var(--success); } .st-warning { background: rgba(245, 158, 11, 0.2); color: var(--warning); }
+        .st-critical { background: rgba(239, 68, 68, 0.2); color: var(--danger); } .st-info { background: rgba(59, 130, 246, 0.2); color: var(--info); } .st-na { background: rgba(100, 116, 139, 0.2); color: var(--na); }
+        
+        .check-meta h4 { font-size: 0.95rem; margin-bottom: 0.3rem; }
+        .check-result { font-size: 0.85rem; color: var(--text-muted); white-space: pre-wrap; font-family: Consolas, 'Courier New', monospace; word-break: break-word; }
+        .check-remed { margin-top: 0.6rem; font-size: 0.85rem; color: #38bdf8;background: rgba(56, 189, 248, 0.1); border: 1px solid rgba(56, 189, 248, 0.2); padding: 0.6rem; border-radius: 6px; display: block; width: 100%; }
+        
+        .score-pill { font-weight: 800; font-family: monospace; padding: 4px 8px; border-radius: 6px; display:inline-block; min-width:60px; text-align:right;}
+        .score-gain { color: var(--success); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); }
+        .score-loss { color: var(--danger); background: rgba(239, 68, 68, 0.1); border: 1px solid rgba(239, 68, 68, 0.2); }
+        .score-warn { color: var(--warning); background: rgba(245, 158, 11, 0.1); border: 1px solid rgba(245, 158, 11, 0.2); }
+        .score-na   { color: var(--text-muted); opacity: 0.5; }
+
+        @media print {
+            body { background-color: #ffffff !important; color: #000000 !important; -webkit-print-color-adjust: exact; }
+            .header { border-bottom: 2px solid #000 !important; }
+            .brand h1 { color: #000 !important; } .brand span { color: #555 !important; }
+            .logo { border-color: #000 !important; box-shadow: none !important; }
+            .card { background-color: #ffffff !important; box-shadow: none !important; border: 1px solid #ccc !important; color: #000 !important; page-break-inside: avoid; }
+            .stat-box { background: #fff !important; border: 1px solid #ddd !important; color: #000 !important; }
+            .category-header { background: #f0f0f0 !important; border-left: 4px solid #000 !important; color: #000 !important; } 
+            .check-row { background-color: #fff !important; border-bottom: 1px solid #ddd !important; }
+            .status-badge { border: 1px solid #333 !important; background: transparent !important; color: #000 !important; }
+            .gauge-bg { stroke: #eee !important; } .grade-text { color: #000 !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="brand">
+            <img src="data:image/jpeg;base64,##LOGO##" alt="Logo" class="logo">
+            <div class="brand-text">
+                <h1>Cyb3rint3l Labs <span style="font-weight:300; color:white;">// Windows Server Security Audit</span></h1>
+                <div class="tagline">INSIDE CYBERSECURITY</div>
+            </div>
+        </div>
+        <div class="meta">
+            <p><strong>Target:</strong> ##FQDN##</p>
+            <p><strong>OS:</strong> ##OS_INFO##</p>
+            <p><strong>System:</strong> ##HARDWARE##</p>
+            <p><strong>Duration:</strong> ##DURATION##</p>
+            <p><strong>Date:</strong> ##DATE##</p>
+        </div>
+    </div>
+    
+    <div class="dashboard">
+        <div class="card score-card">
+            <h3>NIS2 Alignment</h3>
+            <div class="gauge-container"><svg width="150" height="150"><circle class="gauge-bg" cx="75" cy="75" r="70"></circle><circle id="score-circle" class="gauge-progress" cx="75" cy="75" r="70"></circle></svg><div class="grade-text">##GRADE##</div></div>
+            <p style="color:var(--text-muted); font-size:0.9rem; margin-bottom: 0.5rem;">Score: ##SCORE## / 100</p>
+            
+            <div class="exec-summary">##SUMMARY##</div>
+			
+			##PRIORITY_FIXES##
+        </div>
+
+        <div class="card">
+            <h3 style="margin-bottom: 1.1rem;">Findings Overview</h3>
+            <div class="stats-grid" id="stats-container"></div>
+
+            <div class="cat-compliance">
+                <h4 style="margin-bottom:1rem; font-size:0.9rem; color:#fff; text-transform:uppercase; letter-spacing:1px;">Compliance by Domain</h4>
+                ##CAT_BARS##
+            </div>
+        </div>
+    </div>
+
+    <div class="findings-section" id="findings-container"></div>
+	
+    <div style="margin-top: 3rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; border-top: 1px solid #333; padding-top: 1rem; color: var(--text-muted); flex-wrap: wrap;">
+    <div style="flex: 1; min-width: 200px;">
+        Report generated by <strong>Cyb3rint3l Labs Security Hygiene Engine</strong> v##VERSION##
+    </div>
+    <div style="text-align: right; flex: 1; min-width: 200px;">
+        <a href="mailto:kostas@cyb3rint3l.tech" style="color: #C9E7F0; text-decoration: none;">kostas@cyb3rint3l.tech</a> |
+        <a href="https://cyb3rint3l.tech" style="color: #C9E7F0; text-decoration: none;">cyb3rint3l.tech</a> |
+        <a href="https://youtube.com/@cyb3rint3l" style="color: #C9E7F0; text-decoration: none;">youtube.com/@cyb3rint3l</a>
+    </div>
+</div>
+
+    
+    <script>
+        const reportData = ##JSON_PAYLOAD##; const nis2Rationale = ##NIS2_PAYLOAD##; const score = ##SCORE##;
+        const circle = document.getElementById('score-circle'); const radius = circle.r.baseVal.value; const circumference = radius * 2 * Math.PI;
+        const offset = circumference - (score / 100) * circumference; setTimeout(() => { circle.style.strokeDashoffset = offset; }, 100);
+        
+        const counts = { Critical: 0, Warning: 0, OK: 0, Info: 0, NA: 0 };
+        reportData.forEach(c => { let s = c.Status; if(s === 'N/A') s = 'NA'; if(counts[s] !== undefined) counts[s]++; });
+        const neutralCount = counts.Info + counts.NA;
+        
+        document.getElementById('stats-container').innerHTML = `
+            <div class="stat-box crit" onclick="filterFindings('Critical')"><div class="stat-value" style="color:var(--danger)">${counts.Critical}</div><div class="stat-label">Critical Issues</div></div>
+            <div class="stat-box warn" onclick="filterFindings('Warning')"><div class="stat-value" style="color:var(--warning)">${counts.Warning}</div><div class="stat-label">Warnings</div></div>
+            <div class="stat-box ok" onclick="filterFindings('OK')"><div class="stat-value" style="color:var(--success)">${counts.OK}</div><div class="stat-label">Passed Checks</div></div>
+            <div class="stat-box neutral" onclick="filterFindings('Neutral')"><div class="stat-value" style="color:var(--na)">${neutralCount}</div><div class="stat-label">Info / N/A</div></div>
+            <div class="stat-box info" onclick="filterFindings('All')"><div class="stat-value" style="color:var(--info)">${reportData.length}</div><div class="stat-label">Total Checks</div></div>
+        `;
+        
+        const grouped = reportData.reduce((acc, item) => { (acc[item.Category] = acc[item.Category] || []).push(item); return acc; }, {});
+        const catOrder = ["Access Control & Identity Management","Business Continuity & Crisis Management","Data Protection & Platform Integrity","Endpoint & System Hardening","Network Security & Attack Surface Reduction","Patching & Maintenance"];
+        
+        let html = '';
+        catOrder.forEach((cat, index) => {
+            if(!grouped[cat]) return;
+            const checks = grouped[cat].sort((a, b) => a.Score - b.Score);
+            const rationale = nis2Rationale[cat] || "NIS2 Compliance Check";
+            const isFirst = index === 0 ? 'active' : ''; const isOpen = index === 0 ? 'open' : '';
+
+            html += `<div class="category-block">
+                        <div class="category-header ${isFirst}" onclick="toggleCategory(this)">
+                            <h3>${cat}</h3>
+                            <div class="nis2-ref"><strong>NIS2 Alignment:</strong> ${rationale}</div>
+                        </div>
+                        <div class="category-body ${isOpen}">
+                            <table class="check-table">`;
+                            
+            checks.forEach(check => {
+                let badgeClass = 'st-info'; 
+                if(check.Status === 'OK') badgeClass = 'st-ok'; 
+                if(check.Status === 'Warning') badgeClass = 'st-warning'; 
+                if(check.Status === 'Critical') badgeClass = 'st-critical'; 
+                if(check.Status === 'N/A') badgeClass = 'st-na';
+
+                let remedHtml = ''; 
+                if (check.Remediation && check.Remediation.length > 1) { 
+                    remedHtml = `<div class="check-remed">${check.Remediation}</div>`; 
+                }
+
+                let scoreDisplay = '';
+                const max = check.MaxScore;     // Weight (e.g. 20 ή 10)
+                const earned = check.Score;     // Points Gained
+                const lost = max - earned;      // Points Lost
+
+                if (check.Status === 'OK' || check.Status === 'Info') { 
+                    scoreDisplay = `<span class="score-pill score-gain">+${max} pts</span>`; 
+                } 
+                else if (check.Status === 'Warning') { 
+                    // Warning shows how many points were lost (usually half points)
+                    scoreDisplay = `<span class="score-pill score-warn">-${lost} pts</span>`; 
+                } 
+                else if (check.Status === 'Critical') { 
+                    // Critical findings decure the entire weight
+                    scoreDisplay = `<span class="score-pill score-loss">-${max} pts</span>`; 
+                } 
+                else { 
+                    // N/A
+                    scoreDisplay = `<span class="score-pill score-na">--</span>`; 
+                }
+
+                html += `<tr class="check-row">
+                            <td width="10%" style="vertical-align:middle; text-align:center;"><span class="status-badge ${badgeClass}">${check.Status}</span></td>
+                            <td width="12%" style="vertical-align:middle; text-align:right; padding-right:20px;">${scoreDisplay}</td>
+                            <td>
+                                <div class="check-meta">
+                                    <h4>${check.Name}</h4>
+                                    <div class="check-result">${check.Result}</div>
+                                    ${remedHtml}
+                                </div>
+                            </td>
+                        </tr>`;
+            });
+            html += `</table></div></div>`;
+        });
+        document.getElementById('findings-container').innerHTML = html;
+
+        function filterFindings(status) {
+            const rows = document.querySelectorAll('.check-row');
+            rows.forEach(row => {
+                const badgeText = row.querySelector('.status-badge').textContent.trim();
+                if (status === 'All') { row.style.display = 'table-row'; } 
+                else if (status === 'Neutral') { if (badgeText === 'Info' || badgeText === 'N/A') { row.style.display = 'table-row'; } else { row.style.display = 'none'; } } 
+                else { if (badgeText === status) { row.style.display = 'table-row'; } else { row.style.display = 'none'; } }
+            });
+            const categories = document.querySelectorAll('.category-block');
+            categories.forEach(cat => {
+                let hasVisibleRows = false; const catRows = cat.querySelectorAll('.check-row');
+                catRows.forEach(r => { if (r.style.display !== 'none') { hasVisibleRows = true; } });
+                if (hasVisibleRows) { cat.style.display = 'block'; } else { cat.style.display = 'none'; }
+            });
+        }
+		
+        function toggleCategory(header) {
+            const body = header.nextElementSibling;
+            const isOpen = body.classList.contains('open');
+            document.querySelectorAll('.category-body').forEach(el => el.classList.remove('open'));
+            document.querySelectorAll('.category-header').forEach(el => el.classList.remove('active'));
+            if (!isOpen) { body.classList.add('open'); header.classList.add('active'); }
+        }
+    </script>
+</body>
+</html>
