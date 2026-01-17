@@ -64,6 +64,8 @@ Failure in these areas represents an **immediate compromise risk** (e.g., Ransom
 | 15 | **Forensic Audit & Logging** | Defense Evasion Detection | MITRE T1562 |
 | 16 | **VSS Writers Status** | Data Recovery & Ransomware Resilience | CIS Control 11 (IG1) |
 
+📖 **Full Documentation:** For a complete list of all 30+ checks, weights, and technical details, please consult the **[Detailed Checks & Scoring Documentation](CHECKS.md)**.
+
 ## 🔐 Integrity Verification
 
 Current Version Hash (SHA-256):
@@ -77,6 +79,7 @@ Verify via PowerShell:
 (Get-FileHash .\ServerSecurityAudit.ps1).Hash -eq "6D6062C5054B193AFE8874A7E8D4E0C91C870361A1042235301EA97603900074"
 
 ```
+---
 
 **Author:** Konstantinos Xanthopoulos, Founder & Principal Consultant @ [Cyb3rint3l Labs](https://cyb3rint3l.tech)
 
