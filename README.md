@@ -36,10 +36,9 @@ These operations may cause temporary CPU/Disk spikes or trigger EDR/Monitoring a
 ## 🖼️ Findings per domain
 
 <p align="center">
-<img src="https://github.com/user-attachments/assets/eee4f508-28f3-4a7c-80d6-30f7eff3e404" width="100% />
+<img src="https://github.com/user-attachments/assets/eee4f508-28f3-4a7c-80d6-30f7eff3e404" width="100%" />
 </p>
 
----
 ## 🧩 Security Checks & Framework Mappings
 
 **🚨 High-Impact Checks (Weight: 20 pts)**
