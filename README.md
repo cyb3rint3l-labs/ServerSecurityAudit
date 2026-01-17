@@ -76,7 +76,7 @@ Verify via PowerShell:
 
 ```powershell
 
-(Get-FileHash .\ServerSecurityAudit.ps1).Hash -eq "AD30532F52BD4E1435228E9810452F49054F9EACAD660F2F2EEDDEF020463B6E"
+(Get-FileHash .\ServerSecurityAudit.ps1 -Algorithm SHA256).Hash -eq "AD30532F52BD4E1435228E9810452F49054F9EACAD660F2F2EEDDEF020463B6E"
 
 ```
 ---
