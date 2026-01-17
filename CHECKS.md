@@ -10,15 +10,15 @@ Each check falls into one of three categories defining its maximum possible scor
 | :--- | :--- | :--- |
 | **[!] HIGH IMPACT** | **20 pts** | **Immediate Compromise Risk.** Failure here indicates a high likelihood of Ransomware, Credential Theft, or Data Breach. |
 | **[-] STANDARD** | **10 pts** | **Defense in Depth.** Essential hardening measures that reduce the attack surface but are not direct exploits. |
-| **[/] LOWER IMPACT** | **5 pts** | **Optional Hardening.** Features that are optional by default but recommended (Specific to: **SmartScreen Status**). |
+| **[/] LOWER IMPACT** | **5 pts** | **Optional Hardening.** Features that are optional by default but recommended (Specific to: SmartScreen Status). |
 
 ## 💯 Scoring Logic
 The engine calculates the score based on compliance. The HTML report visualises non-compliance as a "point loss" to highlight the security impact.
 
 | Status | Visual Impact | Backend Logic | Description |
 | :--- | :--- | :--- | :--- |
-| 🟢 **OK / Info** | **Full Score** | **100% Earned** | Compliance verified. Full weight added to score. |
-| 🟠 **Warning** | **-50% Penalty** | **50% Earned** | Partial compliance. Only half the weight is awarded (e.g., -10 pts impact). |
+| 🟢 **OK / Info** | **Full Score** | **100% Earned** | **Compliance verified**. Full weight added to score. |
+| 🟠 **Warning** | **-50% Penalty** | **50% Earned** | **Partial compliance**. Only half the weight is awarded (e.g., -10 pts impact). |
 | 🔴 **Critical** | **-100% Penalty** | **0% Earned** | **Security Gap.** The check fails completely. The full weight is forfeited (e.g., -20 pts displayed), significantly lowering the overall rating. |
 
 **Final Score Calculation**: The total score is a percentage calculated by dividing the Total Points Earned by the Total Possible Points of all applicable checks. The result is normalised to a 0-100 scale. 
