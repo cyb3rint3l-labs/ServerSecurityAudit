@@ -46,7 +46,6 @@ These operations may cause temporary CPU/Disk spikes or trigger EDR/Monitoring a
 
 Failure in these areas represents an **immediate compromise risk** (e.g., Ransomware, Data Breach, Man-in-the-Middle).
 
-
 | # | Check Name | Security Impact / Rationale | Compliance Mapping |
 | :--- | :--- | :--- | :--- |
 | 01 | **OS Patching & Update Source** | Continuous Vulnerability Management | CIS Control 7 (IG1) |
