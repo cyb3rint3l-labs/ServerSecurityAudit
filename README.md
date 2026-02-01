@@ -68,9 +68,9 @@ Failure in these areas represents an **immediate compromise risk** (e.g., Ransom
 
 ## 🔐 Integrity Verification
 
-Current Version Hash (SHA-256):
+Current Version (1.0.1) Hash (SHA-256):
 
-AD30532F52BD4E1435228E9810452F49054F9EACAD660F2F2EEDDEF020463B6E
+6BCD6B9B821DC997A19F78D7B545EFFCCEACBEA9F66883BE4F47C716EDB3559D
 
 Verify via PowerShell:
 
