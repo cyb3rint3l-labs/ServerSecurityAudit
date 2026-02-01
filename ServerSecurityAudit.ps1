@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
 	Windows Server Security Audit by Cyb3rint3l Labs.
 	 
@@ -50,8 +50,8 @@
 	Author: Konstantinos Xanthopoulos (Cyb3rint3l Labs)
 	Role: Founder & Principal Consultant
 	Web: https://cyb3rint3l.tech
-    Version: 1.0.0
-	LastUpdated: 2026-01-17
+    Version: 1.0.1
+	LastUpdated: 2026-01-30
 	License: Apache 2.0
   
 	
@@ -133,7 +133,7 @@ param(
     [switch]$HTMLOnly
 )
 
-$scriptVersion   = "1.0.0"  # Stable.
+$scriptVersion   = "1.0.1"  # Stable. Changed Firewall State & Logging Status check to correctly identify the "LogDroppedPackets" parameter. Changed the check for Local Admin Password Age to also consider custom local admins. Appended scoring to the JSON file as well.
 $scriptStartTime = Get-Date
 $timestamp = $scriptStartTime.ToString('yyyyMMdd_HHmm')
 
@@ -717,45 +717,63 @@ try {
     if ($isDC) { 
         $checks += New-Check "Local Administrator Password Age" "(Domain Controller - Check N/A)" "N/A" "INFO: System is a Domain Controller. Ensure DSRM password is rotated periodically." "Access Control & Identity Management" 
     } else {
-		
+        
         $laps = ((Get-ItemProperty "HKLM:\SOFTWARE\Policies\Microsoft Services\AdmPwd" -EA 0).AdmPwdEnabled -eq 1) -or ((Get-ItemProperty "HKLM:\SOFTWARE\Policies\Microsoft\Windows\LAPS" -EA 0).IsEnabled -eq 1)
         
-        # Get Users
-        $users = Get-LocalUser -ErrorAction 0
-        $risky = @(); $admName = "Unknown"; $admEnabled = $false
+        $users = Get-LocalUser -ErrorAction SilentlyContinue
+        $risky = @()
+        $activeAccounts = @()
+        
+        $builtInName = "Unknown"
+        $builtInEnabled = $false
 
         foreach($u in $users) {
-
+           
             if ($u.SID -match "-500$") { 
-                $admName = $u.Name; $admEnabled = $u.Enabled 
+                $builtInName = $u.Name
+                $builtInEnabled = $u.Enabled 
+            }
+           
+            elseif ($u.Enabled) {
+                $activeAccounts += $u.Name
             }
 
+        
             if ($u.Enabled) {
-                if ($u.PasswordNeverExpires) { $risky += "$($u.Name) [NEVER EXPIRES]" }
-                elseif ($u.PasswordLastSet -and ((Get-Date) - $u.PasswordLastSet).TotalDays -gt 365) { $risky += "$($u.Name) [>365d]" }
+                if ($u.PasswordNeverExpires) { 
+                    $risky += "$($u.Name) [NEVER EXPIRES]" 
+                }
+                elseif ($u.PasswordLastSet -and ((Get-Date) - $u.PasswordLastSet).TotalDays -gt 365) { 
+                    $risky += "$($u.Name) [>365d]" 
+                }
             }
         }
         
-        $detail = "Admin: $admName (Enabled: $admEnabled)"; if ($risky) { $detail += " | Risky: " + ($risky -join ", ") }
+  
+        $detail = "Built-in: $builtInName (Enabled: $builtInEnabled)"
         
+        if ($activeAccounts.Count -gt 0) {
+            $detail += " | Other Active Users Checked: " + ($activeAccounts -join ", ")
+        }
+        
+        if ($risky) { 
+            $detail += " | RISKY ACCOUNTS: " + ($risky -join ", ") 
+        }
+        
+   
         if ($detail -match "NEVER EXPIRES") { 
             $status = "Warning"
-            $remed = "SECURITY NOTICE: Detected local administrator accounts configured with 'Password Never Expires'. This is a serious risk. Disable this flag as a matter of priority and enforce rotation." 
+            $remed = "SECURITY NOTICE: Detected accounts configured with 'Password Never Expires'. Disable this flag immediately." 
         } elseif ($detail -match ">365d") { 
             $status = "Warning"
-            if ($laps) {
-                $remed = "SECURITY NOTICE: LAPS appears enabled, yet local admin passwords are stale (>1 year). Check Event Logs for LAPS errors (Broken Trust/Schema issues)."
-            } else {
-                $remed = "SECURITY NOTICE: Enabled local administrator accounts have stale passwords (>1 year). Rotate them as a matter of priority or deploy LAPS."
-            }
+            $remed = "SECURITY NOTICE: Active accounts have stale passwords (>1 year). Rotate them or deploy LAPS."
         } else { 
             $status = "OK"
-            if (-not $admEnabled) {
-                $remed = "EXCELLENT: Built-in Administrator is Disabled and active accounts adhere to rotation policies."
-            } elseif ($admName -ne "Administrator") {
-                $remed = "COMPLIANT: Built-in Administrator is renamed, 'Password Never Expires' is disabled, and password hygiene is good."
+            if (-not $builtInEnabled) {
+        
+                $remed = "EXCELLENT: Built-in Administrator is Disabled. Active accounts ($($activeAccounts -join ', ')) adhere to rotation policies."
             } else {
-                $remed = "MAINTENANCE: Local administrator passwords are fresh. Consider renaming the default 'Administrator' account for Defense in Depth."
+                $remed = "MAINTENANCE: Built-in Administrator is enabled but password hygiene is good. Consider disabling it in favor of a custom admin."
             }
         }
         
@@ -911,27 +929,64 @@ Write-Progress -Activity "Windows Server Security Audit" -Status " [3/6] Auditin
 #>
 try {
     $profiles = Get-NetFirewallProfile -ErrorAction Stop
-    
-    $off = $profiles | Where-Object { $_.Enabled -ne $true }
-    
-    $noLog = $profiles | Where-Object { $_.LogDroppedPackets -notin @($true, 'True', 'Enable') }
-    
-    if ($off) { 
-        $status = "Critical"; $detail = "Firewall Disabled on: " + ($off.Name -join ", ")
-        $finalRemed = "URGENT: One or more Firewall profiles are DISABLED. This leaves the server exposed to network attacks. Enable all Firewall profiles as a matter of priority via Group Policy or PowerShell." 
+    $disabled = $profiles | ? { !$_.Enabled }
+    $regPath = "HKLM:\SYSTEM\CurrentControlSet\Services\SharedAccess\Parameters\FirewallPolicy"
+    $map = @{ Domain="DomainProfile"; Private="StandardProfile"; Public="PublicProfile" }
+
+    $noLog = $map.Keys | ? {
+        $key = "$regPath\$($map[$_])\Logging"
+        $val = Get-ItemProperty $key -ErrorAction SilentlyContinue
+        !$val -or $val.LogDroppedPackets -ne 1
     }
-    elseif ($noLog) { 
-        $status = "Warning"; $detail = "Logging Disabled on: " + ($noLog.Name -join ", ")
-        $finalRemed = "SECURITY NOTICE: Firewall is active, but 'LogDroppedPackets' is disabled. Without logs, you cannot detect intrusion attempts or debug connectivity issues. Enable logging for forensic visibility." 
+
+    if ($disabled) {
+        $status, $detail = "Critical", "Firewall disabled on: $($disabled.Name -join ', ')"
+        $remed = "URGENT: One or more firewall profiles are disabled. Enable all profiles via Group Policy or PowerShell."
     }
-    else { 
-        $status = "OK"; $detail = "Firewall Active & Logging"
-        $finalRemed = "COMPLIANT: Host-based firewall is active on all profiles and packet logging is enabled. This provides both protection and forensic data." 
+    elseif ($noLog) {
+        $status, $detail = "Warning", "Dropped packet logging missing on: $($noLog -join ', ')"
+        $remed = "NOTICE: Firewall is enabled but logging is disabled.Enable dropped packet logging for forensic and incident response visibility."
     }
-    
-    $checks += New-Check "Firewall State & Logging Status" $detail $status $finalRemed "Network Security & Attack Surface Reduction" -Weight 20
+    else {
+        $status, $detail = "OK", "Firewall enabled and logging active on all profiles."
+        $remed = "COMPLIANT: Host firewall and logging are correctly configured."
+    }
+
+ $checks += New-Check "Firewall State & Logging Status" $detail $status $remed "Network Security & Attack Surface Reduction" -Weight 20
 } catch { 
     $checks += New-Check "Firewall State & Logging Status" "Error: $($_.Exception.Message)" "Info" "Check permissions." "Network Security & Attack Surface Reduction" -Weight 20 
+}
+
+<#
+# 6) NetBIOS over TCP/IP Status
+# ----------------------------------------------------------------------------------
+# Mapped to: NIS2 Art. 21(2)(e) - security in network and information systems acquisition, development and maintenance, including vulnerability handling and disclosure.
+# Mapped to: NIS2 Art. 21(2)(g) - Basic cyber hygiene practices and cybersecurity training.
+# Mapped to: MITRE T1187 (Forced Authentication).
+# Risk: NetBIOS is a legacy protocol vulnerable to spoofing (NBT-NS) and poisoning.
+# Logic:
+# 1. Queries all network adapters via WMI/CIM (Win32_NetworkAdapterConfiguration).
+# 2. Checks 'TcpipNetbiosOptions': Value '2' means Disabled (Secure).
+# 3. Flags Warning if NetBIOS is enabled (0 or 1).
+# ----------------------------------------------------------------------------------
+#>
+try {
+    $risky = Get-CimInstance Win32_NetworkAdapterConfiguration -Filter "IPEnabled=TRUE" -ErrorAction Stop | Where-Object { $_.TcpipNetbiosOptions -ne 2 }
+    
+    if ($risky) {
+        $status = "Warning"
+
+        $names = $risky | ForEach-Object { $_.Description }
+        $detail = "NetBIOS Enabled on $($risky.Count) adapters: " + ($names -join ", ")
+        
+        $finalRemed = "SECURITY NOTICE: NetBIOS over TCP/IP is enabled. This legacy name-resolution mechanism can be abused for NBT-NS poisoning attacks, potentially leading to credential interception. If internal DNS is in use, NetBIOS should be disabled on network adapters or centrally via DHCP options."
+    } else {
+        $status = "OK"; $detail = "NetBIOS Disabled"
+        $finalRemed = "COMPLIANT: NetBIOS over TCP/IP is explicitly disabled. This eliminates the NBT-NS spoofing attack vector."
+    }
+    $checks += New-Check "NetBIOS over TCP/IP" $detail $status $finalRemed "Network Security & Attack Surface Reduction"
+} catch {
+    $checks += New-Check "NetBIOS over TCP/IP" "Error: $($_.Exception.Message)" "Warning" "Check CIM/WMI." "Network Security & Attack Surface Reduction"
 }
 
 <#
@@ -1950,8 +2005,14 @@ foreach ($check in $checks) {
 }
 
 if (-not $HTMLOnly) {
-$checks | ConvertTo-Json -Depth 6 | Out-File -FilePath $outJson -Encoding UTF8
-Write-Host "`n[SUCCESS] Saved JSON report to: $outJson" -ForegroundColor Green
+    $finalJsonPayload = @{
+        RiskScore = $securityScore
+        RiskLevel = $grade
+        Findings  = $checks
+    }
+
+    $finalJsonPayload | ConvertTo-Json -Depth 6 | Out-File -FilePath $outJson -Encoding UTF8
+	Write-Host "`n[SUCCESS] Saved JSON report to: $outJson" -ForegroundColor Green
 
 }
 else {
