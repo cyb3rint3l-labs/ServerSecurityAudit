@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
 	Windows Server Security Audit by Cyb3rint3l Labs.
 	 
